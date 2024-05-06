@@ -48,6 +48,27 @@ int main(int argc, char *argv[])
 	if (!editor)
 		editor = "vi";
 
+        // process DVTM_EDITOR_ARGS
+        char *editor_args = getenv("DVTM_EDITOR_ARGS");
+        char **editor_extra_argv = NULL;
+        int editor_argc = 0;
+
+        if (editor_args) {
+          char *rest = editor_args;
+          char* editor_args_token;
+          int args_count = 0;
+          while ((editor_args_token = strtok_r(rest, " ", &rest))) {
+            args_count++;
+          }
+          editor_extra_argv = malloc(sizeof(char*) * args_count);
+          if (editor_extra_argv == NULL) {
+            printf("Memory allocation failed\n");
+            return 1;
+          }
+          while ((editor_args_token = strtok_r(editor_args, " ", &editor_args))) {
+            editor_extra_argv[editor_argc++] = editor_args_token;
+          }
+        }
 	char tempname[] = "/tmp/dvtm-editor.XXXXXX";
 	if ((tmp_write = mkstemp(tempname)) == -1) {
 		error("failed to open temporary file `%s'", tempname);
@@ -60,7 +81,7 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 
-	char buffer[2048];
+	char buffer[4096];
 	ssize_t bytes;
 	while ((bytes = read(STDIN_FILENO, buffer, sizeof(buffer))) > 0) {
 		do {
@@ -118,12 +139,17 @@ int main(int argc, char *argv[])
 
 		close(tty);
 
-		const char *editor_argv[argc+2];
+		const char *editor_argv[argc+ editor_argc +2];
 		editor_argv[0] = editor;
 		for (int i = 1; i < argc; i++)
 			editor_argv[i] = argv[i];
-		editor_argv[argc] = tempname;
-		editor_argv[argc+1] = NULL;
+                if (editor_extra_argv != NULL) {
+                  for (int i = 0; i < editor_argc; i++) {
+                    editor_argv[argc+i] = editor_extra_argv[i];
+                  }
+                }
+		editor_argv[argc+editor_argc] = tempname;
+		editor_argv[argc+editor_argc+1] = NULL;
 
 		execvp(editor, (char* const*)editor_argv);
 		error("failed to exec editor process `%s'", editor);
