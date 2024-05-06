@@ -1,4 +1,4 @@
-/* valid curses attributes are listed below they can be ORed
+/* valid curses attributes are listed below they can be Red
  *
  * A_NORMAL        Normal display (no highlight)
  * A_STANDOUT      Best highlighting mode of the terminal.
@@ -14,11 +14,13 @@
 enum {
 	DEFAULT,
 	BLUE,
+        GREEN,
 };
 
 static Color colors[] = {
 	[DEFAULT] = { .fg = -1,         .bg = -1, .fg256 = -1, .bg256 = -1, },
 	[BLUE]    = { .fg = COLOR_BLUE, .bg = -1, .fg256 = 68, .bg256 = -1, },
+        [GREEN]   = { .fg = COLOR_GREEN, .bg = -1, .fg256 = 1, .bg256 = -1, }
 };
 
 #define COLOR(c)        COLOR_PAIR(colors[c].pair)
@@ -34,7 +36,7 @@ static Color colors[] = {
 #define BAR_BEGIN       '['
 #define BAR_END         ']'
 /* status bar (command line option -s) position */
-#define BAR_POS         BAR_TOP /* BAR_BOTTOM, BAR_OFF */
+#define BAR_POS         BAR_BOTTOM /* BAR_BOTTOM, BAR_OFF */
 /* whether status bar should be hidden if only one client exists */
 #define BAR_AUTOHIDE    true
 /* master width factor [0.1 .. 0.9] */
@@ -42,7 +44,7 @@ static Color colors[] = {
 /* number of clients in master area */
 #define NMASTER 1
 /* scroll back buffer size in lines */
-#define SCROLL_HISTORY 500
+#define SCROLL_HISTORY 1000000
 /* printf format string for the tag in the status bar */
 #define TAG_SYMBOL   "[%s]"
 /* curses attributes for the currently selected tags */
@@ -50,7 +52,7 @@ static Color colors[] = {
 /* curses attributes for not selected tags which contain no windows */
 #define TAG_NORMAL   (COLOR(DEFAULT) | A_NORMAL)
 /* curses attributes for not selected tags which contain windows */
-#define TAG_OCCUPIED (COLOR(BLUE) | A_NORMAL)
+#define TAG_OCCUPIED (COLOR(GREEN) | A_NORMAL)
 /* curses attributes for not selected tags which with urgent windows */
 #define TAG_URGENT (COLOR(BLUE) | A_NORMAL | A_BLINK)
 
@@ -69,39 +71,26 @@ static Layout layouts[] = {
 	{ "[ ]", fullscreen },
 };
 
-#define MOD  CTRL('g')
+#define MOD  CTRL('x')
 #define TAGKEYS(KEY,TAG) \
-	{ { MOD, 'v', KEY,     }, { view,           { tags[TAG] }               } }, \
+	{ { MOD, 'x', KEY,     }, { view,           { tags[TAG] }               } }, \
 	{ { MOD, 't', KEY,     }, { tag,            { tags[TAG] }               } }, \
-	{ { MOD, 'V', KEY,     }, { toggleview,     { tags[TAG] }               } }, \
+	{ { MOD, 'X', KEY,     }, { toggleview,     { tags[TAG] }               } }, \
 	{ { MOD, 'T', KEY,     }, { toggletag,      { tags[TAG] }               } },
 
 /* you can specifiy at most 3 arguments */
 static KeyBinding bindings[] = {
-	{ { MOD, 'c',          }, { create,         { NULL }                    } },
-	{ { MOD, 'C',          }, { create,         { NULL, NULL, "$CWD" }      } },
-	{ { MOD, 'x', 'x',     }, { killclient,     { NULL }                    } },
-	{ { MOD, 'j',          }, { focusnext,      { NULL }                    } },
-	{ { MOD, 'J',          }, { focusdown,      { NULL }                    } },
-	{ { MOD, 'K',          }, { focusup,        { NULL }                    } },
-	{ { MOD, 'H',          }, { focusleft,      { NULL }                    } },
-	{ { MOD, 'L',          }, { focusright,     { NULL }                    } },
-	{ { MOD, 'k',          }, { focusprev,      { NULL }                    } },
-	{ { MOD, 'f',          }, { setlayout,      { "[]=" }                   } },
-	{ { MOD, 'g',          }, { setlayout,      { "+++" }                   } },
-	{ { MOD, 'b',          }, { setlayout,      { "TTT" }                   } },
-	{ { MOD, 'm',          }, { setlayout,      { "[ ]" }                   } },
+	TAGKEYS( '1',                              0)
+	TAGKEYS( '2',                              1)
+	TAGKEYS( '3',                              2)
+	TAGKEYS( '4',                              3)
+	TAGKEYS( '5',                              4)
+	{ { KEY_SNEXT,         }, { scrollback,     { "1"  }                    } },
+	{ { KEY_SPREVIOUS,     }, { scrollback,     { "-1" }                    } },
 	{ { MOD, ' ',          }, { setlayout,      { NULL }                    } },
-	{ { MOD, 'i',          }, { incnmaster,     { "+1" }                    } },
-	{ { MOD, 'd',          }, { incnmaster,     { "-1" }                    } },
-	{ { MOD, 'h',          }, { setmfact,       { "-0.05" }                 } },
-	{ { MOD, 'l',          }, { setmfact,       { "+0.05" }                 } },
 	{ { MOD, '.',          }, { toggleminimize, { NULL }                    } },
-	{ { MOD, 's',          }, { togglebar,      { NULL }                    } },
-	{ { MOD, 'S',          }, { togglebarpos,   { NULL }                    } },
-	{ { MOD, 'M',          }, { togglemouse,    { NULL }                    } },
-	{ { MOD, '\n',         }, { zoom ,          { NULL }                    } },
-	{ { MOD, '\r',         }, { zoom ,          { NULL }                    } },
+	{ { MOD, '/',          }, { copymode,       { "dvtm-pager", "/" }       } },
+	{ { MOD, '0',          }, { view,           { NULL }                    } },
 	{ { MOD, '1',          }, { focusn,         { "1" }                     } },
 	{ { MOD, '2',          }, { focusn,         { "2" }                     } },
 	{ { MOD, '3',          }, { focusn,         { "3" }                     } },
@@ -111,35 +100,47 @@ static KeyBinding bindings[] = {
 	{ { MOD, '7',          }, { focusn,         { "7" }                     } },
 	{ { MOD, '8',          }, { focusn,         { "8" }                     } },
 	{ { MOD, '9',          }, { focusn,         { "9" }                     } },
-	{ { MOD, '\t',         }, { focuslast,      { NULL }                    } },
-	{ { MOD, 'q', 'q',     }, { quit,           { NULL }                    } },
-	{ { MOD, 'a',          }, { togglerunall,   { NULL }                    } },
-	{ { MOD, CTRL('L'),    }, { redraw,         { NULL }                    } },
-	{ { MOD, 'r',          }, { redraw,         { NULL }                    } },
-	{ { MOD, 'e',          }, { copymode,       { "dvtm-editor" }           } },
-	{ { MOD, 'E',          }, { copymode,       { "dvtm-pager" }            } },
-	{ { MOD, '/',          }, { copymode,       { "dvtm-pager", "/" }       } },
-	{ { MOD, 'p',          }, { paste,          { NULL }                    } },
-	{ { MOD, KEY_PPAGE,    }, { scrollback,     { "-1" }                    } },
-	{ { MOD, KEY_NPAGE,    }, { scrollback,     { "1"  }                    } },
 	{ { MOD, '?',          }, { create,         { "man dvtm", "dvtm help" } } },
-	{ { MOD, MOD,          }, { send,           { (const char []){MOD, 0} } } },
-	{ { KEY_SPREVIOUS,     }, { scrollback,     { "-1" }                    } },
-	{ { KEY_SNEXT,         }, { scrollback,     { "1"  }                    } },
-	{ { MOD, '0',          }, { view,           { NULL }                    } },
+	{ { MOD, 'C',          }, { create,         { NULL, NULL, "$CWD" }      } },
+	{ { MOD, 'E',          }, { copymode,       { "dvtm-pager" }            } },
+	{ { MOD, 'H',          }, { focusleft,      { NULL }                    } },
+	{ { MOD, 'J',          }, { focusdown,      { NULL }                    } },
+	{ { MOD, 'K',          }, { focusup,        { NULL }                    } },
+	{ { MOD, 'L',          }, { focusright,     { NULL }                    } },
+	{ { MOD, 'M',          }, { setlayout,      { "[ ]" }                   } },
+	{ { MOD, 'S',          }, { togglebarpos,   { NULL }                    } },
+	{ { MOD, '\n',         }, { zoom ,          { NULL }                    } },
+	{ { MOD, '\r',         }, { zoom ,          { NULL }                    } },
+	{ { MOD, '\t',         }, { focuslast,      { NULL }                    } },
+	{ { MOD, 'a',          }, { togglerunall,   { NULL }                    } },
+	{ { MOD, 'b',          }, { setlayout,      { "TTT" }                   } },
+	{ { MOD, 'c',          }, { create,         { NULL }                    } },
+	{ { MOD, 'd',          }, { incnmaster,     { "-1" }                    } },
+	{ { MOD, 'e',          }, { copymode,       { "dvtm-editor" }           } },
+	{ { MOD, 'f',          }, { setlayout,      { "[]=" }                   } },
+	{ { MOD, 'g',          }, { setlayout,      { "+++" }                   } },
+	{ { MOD, 'h',          }, { setmfact,       { "-0.05" }                 } },
+	{ { MOD, 'i',          }, { incnmaster,     { "+1" }                    } },
+	{ { MOD, 'j',          }, { focusnext,      { NULL }                    } },
+	{ { MOD, 'k',          }, { focusprev,      { NULL }                    } },
+	{ { MOD, 'l',          }, { setmfact,       { "+0.05" }                 } },
+	{ { MOD, 'm',          }, { togglemouse,    { NULL }                    } },
+	{ { MOD, 'p',          }, { paste,          { NULL }                    } },
+	{ { MOD, 'q', 'q',     }, { quit,           { NULL }                    } },
+	{ { MOD, 'r',          }, { redraw,         { NULL }                    } },
+	{ { MOD, 's',          }, { togglebar,      { NULL }                    } },
+	{ { MOD, 't', '0'      }, { tag,            { NULL }                    } },
+	{ { MOD, 'v', '0'      }, { view,           { NULL }                    } },
+	{ { MOD, 'v', '\t',    }, { viewprevtag,    { NULL }                    } },
+	{ { MOD, CTRL('L'),    }, { redraw,         { NULL }                    } },
 	{ { MOD, KEY_F(1),     }, { view,           { tags[0] }                 } },
 	{ { MOD, KEY_F(2),     }, { view,           { tags[1] }                 } },
 	{ { MOD, KEY_F(3),     }, { view,           { tags[2] }                 } },
 	{ { MOD, KEY_F(4),     }, { view,           { tags[3] }                 } },
 	{ { MOD, KEY_F(5),     }, { view,           { tags[4] }                 } },
-	{ { MOD, 'v', '0'      }, { view,           { NULL }                    } },
-	{ { MOD, 'v', '\t',    }, { viewprevtag,    { NULL }                    } },
-	{ { MOD, 't', '0'      }, { tag,            { NULL }                    } },
-	TAGKEYS( '1',                              0)
-	TAGKEYS( '2',                              1)
-	TAGKEYS( '3',                              2)
-	TAGKEYS( '4',                              3)
-	TAGKEYS( '5',                              4)
+	{ { MOD, KEY_NPAGE,    }, { scrollback,     { "1"  }                    } },
+	{ { MOD, KEY_PPAGE,    }, { scrollback,     { "-1" }                    } },
+	{ { MOD, MOD,          }, { send,           { (const char []){MOD, 0} } } },
 };
 
 static const ColorRule colorrules[] = {
